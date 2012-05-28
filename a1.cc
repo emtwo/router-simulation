@@ -1,3 +1,11 @@
+/**
+ * M/D/1 Router Queue Simulation.
+ *
+ * Packets arrive at a Markovian(M) distribution interval.
+ * Packets depart at a deterministic(D), constant interval.
+ * Packets are only routed through 1 server.
+ *
+ **/
 #include <math.h>
 #include <iostream>
 #include <queue>
