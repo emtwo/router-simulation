@@ -9,6 +9,7 @@
 #include <math.h>
 #include <iostream>
 #include <queue>
+#include <iomanip>
 #include "random.h"
 
 using namespace std;
@@ -37,7 +38,7 @@ double generateMicrosecondX() {
   return (-1 / LAMBDA) * log(1 - genrand()) * 1000000;
 }
 
-void arrival(int t) {
+void arrival(long t) {
   if (t != T_ARRIVAL) {
     return;
   }
@@ -48,18 +49,38 @@ void arrival(int t) {
   T_ARRIVAL += generateMicrosecondX();
 }
 
-void departure(int t) {
-  if (q.size() == 0 || t < T_DEPARTURE) {
+void departure(long t) {
+  // Server is idle only when the queue is empty.
+  if (q.size() == 0) {
+    totalIdleTicks++;
+  }
+
+  // There are items in the queue but nothing is scheduled to transmit yet.
+  if (q.size() != 0 && t > T_TRANSMIT) {
+    T_DEPARTURE = t;
+    T_TRANSMIT = T_DEPARTURE + LENGTH / C;
+  }
+
+  if (t != T_TRANSMIT) {
     return;
   }
 
   cout << "Packet " << q.front() << " is departing." << endl;
   q.pop();
-  T_DEPARTURE = t + TICKS_TIL_DEPARTURE;
+
+  // Add the time taken from arrival to end of transmission.
+  totalTime += (t-elapsedTime.front());
+  elapsedTime.pop();
+
+  if (q.size() != 0) {
+    T_DEPARTURE = t;
+    T_TRANSMIT = T_DEPARTURE + LENGTH / C;
+  }
 }
 
-void start_simulation(int ticks) {
-  for (int t = 0; t < ticks; t++) {
+void start_simulation(long ticks) {
+  for (long t = 0; t < ticks; t++) {
+    numPackets += q.size();
     usleep(1);
     arrival(t);
     departure(t);
@@ -67,12 +88,17 @@ void start_simulation(int ticks) {
 }
 
 void compute_performances() {
+  cout << fixed << setprecision(2);
+  cout << "E[N]: " << numPackets / TICKS << " (avg. # packets in queue per tick)" << endl;
+  cout << "E[T]: " << totalTime / TICKS << " (avg. # ticks from arrival to end of transmission)" << endl;
+  cout << "Pidle: " << (totalIdleTicks / TICKS) * 100 << " %"<< endl;
 }
 
 int main() {
   sgenrand(4357);
   T_ARRIVAL = generateMicrosecondX();
   T_DEPARTURE = T_ARRIVAL;
+  T_TRANSMIT = T_DEPARTURE + LENGTH / C;
 
   cout << "Arrival Tick: " << T_ARRIVAL << endl;
   cout << "Departure Tick: " << T_DEPARTURE << endl;
