@@ -13,17 +13,28 @@
 
 using namespace std;
 
-int T_ARRIVAL;
-int T_DEPARTURE;
-int numPacketsInQueue = 0;
-int packetNum = 0;
-const double LAMBDA = 100; // Avg # of packets generated/arrived per second
-const int TICKS = 1000000;
-const int TICKS_TIL_DEPARTURE = 10000;
-queue<int> q;
+// Constants:
+const long TICKS = 6000000000;
+const double LAMBDA = 100;     // Avg # of packets generated/arrived per second
+const double LENGTH = 1;       // Length of packet in bits
+const double C = 1;            // Transmittion rate of the output link (bits per second)
 
-double generateMicrosecondX(double U) {
-  return (-1 / LAMBDA) * log(1 - U) * 1000000;
+// Output variables.
+double numPackets = 0;         // Sum of packets in every tick.
+double totalTime = 0;          // Sum of time taken from arrival to departure for every packet.
+double totalIdleTicks = 0;     // Total num ticks with server doing nothing.
+//const double p;              // Utilization of the queue
+
+// Other.
+int T_ARRIVAL;                 // Time for next packet arrival.
+int T_DEPARTURE;               // Time for next packet departure.
+int T_TRANSMIT;                // Time for next packet transmit.
+int packetNum = 0;             // Packet data.
+queue<int> q;                  // Router queue.
+queue<int> elapsedTime;        // A queue of the arrival times of each packet.
+
+double generateMicrosecondX() {
+  return (-1 / LAMBDA) * log(1 - genrand()) * 1000000;
 }
 
 void arrival(int t) {
@@ -33,7 +44,8 @@ void arrival(int t) {
 
   cout << "New packet will be: " << packetNum << endl;
   q.push(packetNum++);
-  T_ARRIVAL += generateMicrosecondX(genrand());
+  elapsedTime.push(t);
+  T_ARRIVAL += generateMicrosecondX();
 }
 
 void departure(int t) {
@@ -59,7 +71,7 @@ void compute_performances() {
 
 int main() {
   sgenrand(4357);
-  T_ARRIVAL = generateMicrosecondX(genrand());
+  T_ARRIVAL = generateMicrosecondX();
   T_DEPARTURE = T_ARRIVAL;
 
   cout << "Arrival Tick: " << T_ARRIVAL << endl;
