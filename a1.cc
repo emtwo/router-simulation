@@ -1,9 +1,10 @@
 /**
- * M/D/1 Router Queue Simulation.
+ * M/D/1/K Router Queue Simulation.
  *
  * Packets arrive at a Markovian(M) distribution interval.
  * Packets depart at a deterministic(D), constant interval.
  * Packets are only routed through 1 server.
+ * Buffer is bounded with a size K.
  *
  **/
 #include <math.h>
@@ -14,11 +15,14 @@
 
 using namespace std;
 
+#define INFINITE -1
+
 // Constants:
 const unsigned long TICKS = 5000000000;
 const double LAMBDA = 100;        // Avg # of packets arrived per second
-const double LENGTH = 1000;       // Length of packet in bits
+const double LENGTH = 2000;       // Length of packet in bits
 const double C = 1000000;         // Transmittion rate of the output link (bits per second)
+const int K = INFINITE;                  // Max size of router queue.
 
 const int SERVICE_TIME = LENGTH * 1000 / C;
 
@@ -26,6 +30,8 @@ const int SERVICE_TIME = LENGTH * 1000 / C;
 double numPackets = 0;            // Sum of packets in every tick.
 double totalTime = 0;             // Sum of time taken from arrival to departure for every packet.
 double totalIdleTicks = 0;        // Total num ticks with server doing nothing.
+double totalPacketsLost = 0;      // Total num of packets lost;
+double totalNumPackets = 0;       // Total number of packets attempting arrival.
 //const double p;                 // Utilization of the queue
 
 // Other.
@@ -38,7 +44,7 @@ queue<unsigned long> elapsedTime; // A queue of the arrival times of each packet
 
 double generateMicrosecondX() {
   // Multiply to convert to microseconds.
-  // Add 1 to ensure generated number is > 0.
+  // Add 1 to ensure generated number is > 0. 
   return (-1.0 / LAMBDA) * log(1.0 - genrand()) * 1000000.0 + 1.0;
 }
 
@@ -48,6 +54,12 @@ void arrival(unsigned long t) {
   }
 
   //cout << "New packet will be: " << packetNum << endl;
+  if (q.size() >= K && K != INFINITE) {
+    totalPacketsLost++;
+    return;
+  }
+  totalNumPackets++;
+
   q.push(packetNum++);
   elapsedTime.push(t);
   T_ARRIVAL += generateMicrosecondX();
@@ -88,7 +100,10 @@ void compute_performances() {
   cout << fixed << setprecision(10);
   cout << "E[N]: " << numPackets / TICKS << " (avg. # packets in queue per tick)" << endl;
   cout << "E[T]: " << totalTime / TICKS << " (avg. # ticks from arrival to end of transmission)" << endl;
-  cout << "Pidle: " << (totalIdleTicks / TICKS) * 100 << " %"<< endl;
+  cout << "Pidle: " << (totalIdleTicks / TICKS) * 100 << " %" << endl;
+  if (K != INFINITE) {
+    cout << "Ploss: " << (totalPacketsLost / totalNumPackets) * 100 << " %" << endl; 
+  }
 }
 
 int main() {
@@ -96,6 +111,11 @@ int main() {
   T_ARRIVAL = generateMicrosecondX();
   T_DEPARTURE = T_ARRIVAL;
   T_TRANSMIT = T_DEPARTURE + SERVICE_TIME;
+
+  /*double ro;
+  cin >> ro;
+
+  LAMBDA = ((double) ro) * SERVICE_TIME;*/
 
   cout << "Arrival Tick: " << T_ARRIVAL << endl;
   cout << "Departure Tick: " << T_DEPARTURE << endl;
