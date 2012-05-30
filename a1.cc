@@ -18,20 +18,20 @@ using namespace std;
 #define INFINITE -1
 
 // Constants:
-const unsigned long TICKS = 5000000000;
-const double LAMBDA = 100;        // Avg # of packets arrived per second
-const double LENGTH = 2000;       // Length of packet in bits
-const double C = 1000000;         // Transmittion rate of the output link (bits per second)
-const int K = INFINITE;                  // Max size of router queue.
+unsigned long TICKS; //number of microseconds to run the simulation for
+double LAMBDA; // Avg # of packets arrived per second
+unsigned long LENGTH; // Length of packet in bits
+double C; // Transmittion rate of the output link (bits per second)
+int K = INFINITE; // Max size of router queue.
 
-const int SERVICE_TIME = LENGTH * 1000 / C;
+int SERVICE_TIME;
 
 // Output variables.
-double numPackets = 0;            // Sum of packets in every tick.
-double totalTime = 0;             // Sum of time taken from arrival to departure for every packet.
-double totalIdleTicks = 0;        // Total num ticks with server doing nothing.
-double totalPacketsLost = 0;      // Total num of packets lost;
-double totalNumPackets = 0;       // Total number of packets attempting arrival.
+unsigned long sumPacketsPerTick = 0;            // Sum of packets in every tick.
+unsigned long totalTime = 0;             // Sum of time taken from arrival to departure for every packet.
+unsigned long totalIdleTicks = 0;        // Total num ticks with server doing nothing.
+unsigned long totalPackets = 0;       // Total number of packets attempting arrival.
+unsigned long totalPacketsLost = 0;      // Total num of packets lost;
 //const double p;                 // Utilization of the queue
 
 // Other.
@@ -53,12 +53,11 @@ void arrival(unsigned long t) {
     return;
   }
 
-  //cout << "New packet will be: " << packetNum << endl;
+  totalPackets++;
   if (q.size() >= K && K != INFINITE) {
     totalPacketsLost++;
     return;
   }
-  totalNumPackets++;
 
   q.push(packetNum++);
   elapsedTime.push(t);
@@ -87,26 +86,38 @@ void departure(unsigned long t) {
   }
 }
 
-void start_simulation(unsigned long ticks) {
-  for (unsigned long t = 0; t < ticks; ++t) {
-    numPackets += q.size();
-    arrival(t);
-    departure(t);
-    //if (t % 1000000 == 0) cout << "tick: " << t << endl;
+void compute_performances(unsigned long ticks) {
+  cout << fixed << setprecision(10);
+  cout << "At tick: " << ticks << endl;
+  cout << "E[N]: " << (double) sumPacketsPerTick / ticks << " (avg. # packets in queue per tick)" << endl;
+  cout << "E[T]: " << (double) totalTime / totalPackets << " (avg. # ticks from arrival to end of transmission)" << endl;
+  cout << "Pidle: " << ((double) totalIdleTicks / ticks) * 100 << " %" << endl;
+  if (K != INFINITE) {
+    cout << "Ploss: " << ((double) totalPacketsLost / totalPackets) * 100 << " %" << endl; 
   }
 }
 
-void compute_performances() {
-  cout << fixed << setprecision(10);
-  cout << "E[N]: " << numPackets / TICKS << " (avg. # packets in queue per tick)" << endl;
-  cout << "E[T]: " << totalTime / TICKS << " (avg. # ticks from arrival to end of transmission)" << endl;
-  cout << "Pidle: " << (totalIdleTicks / TICKS) * 100 << " %" << endl;
-  if (K != INFINITE) {
-    cout << "Ploss: " << (totalPacketsLost / totalNumPackets) * 100 << " %" << endl; 
+void start_simulation(unsigned long ticks) {
+  for (unsigned long t = 0; t < ticks; ++t) {
+    sumPacketsPerTick += q.size();
+    arrival(t);
+    departure(t);
+
+    /*if (t % 1000000 == 0) {
+      compute_performances(t);
+    }*/
   }
 }
 
 int main() {
+  TICKS = 5000000000;
+  LAMBDA = 100;
+  LENGTH = 2000;
+  C = 1000000; 
+  K = INFINITE;
+  
+  SERVICE_TIME = LENGTH * 1000 / C;
+
   sgenrand(1359084);
   T_ARRIVAL = generateMicrosecondX();
   T_DEPARTURE = T_ARRIVAL;
@@ -115,12 +126,14 @@ int main() {
   /*double ro;
   cin >> ro;
 
-  LAMBDA = ((double) ro) * SERVICE_TIME;*/
+  LAMBDA = ro * C / LENGTH;
+
+  cout << "LAMBDA is " << LAMBDA << endl;*/
 
   cout << "Arrival Tick: " << T_ARRIVAL << endl;
   cout << "Departure Tick: " << T_DEPARTURE << endl;
   cout << "Total Ticks: " << TICKS << endl;
 
   start_simulation(TICKS);
-  compute_performances();
+  compute_performances(TICKS);
 }
